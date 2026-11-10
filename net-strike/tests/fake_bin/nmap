@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Fake nmap for NET-STRIKE tests: emits realistic -oX output for the lab hosts below."""
+import os, sys, time
+from xml.sax.saxutils import quoteattr
+a = sys.argv[1:]
+if "--version" in a:
+    print("Nmap version 7.94SVN ( https://nmap.org )"); sys.exit(0)
+
+def val(flag):
+    return a[a.index(flag) + 1] if flag in a else None
+
+def host(ip, mac="", vendor="", names=(), ports=(), os=None, hostscripts=()):
+    x = f'<host><status state="up"/><address addr="{ip}" addrtype="ipv4"/>'
+    if mac:
+        x += f'<address addr="{mac}" addrtype="mac" vendor="{vendor}"/>'
+    x += "<hostnames>" + "".join(f'<hostname name="{n}" type="PTR"/>' for n in names) + "</hostnames>"
+    if ports:
+        x += "<ports>"
+        for p in ports:
+            port, svc, prod, ver, scripts = p
+            x += f'<port protocol="tcp" portid="{port}"><state state="open"/>'
+            x += f'<service name="{svc}" product="{prod}" version="{ver}"/>' if svc else ""
+            for sid, out in scripts:
+                x += f'<script id="{sid}" output={quoteattr(out)}/>'
+            x += "</port>"
+        x += "</ports>"
+    if os:
+        x += f'<os><osmatch name="{os[0]}" accuracy="{os[1]}"><osclass type="{os[2]}" osfamily="{os[3]}"/></osmatch></os>'
+    if hostscripts:
+        x += "<hostscript>" + "".join(f'<script id="{i}" output="{o}"/>' for i, o in hostscripts) + "</hostscript>"
+    return x + "</host>"
+
+DC = "192.168.56.10"
+WEB = "192.168.56.20"
+OPEN = {
+    DC: [(135, "msrpc", "Microsoft Windows RPC", "", []), (139, "netbios-ssn", "", "", []),
+         (445, "microsoft-ds", "", "", [("smb2-security-mode", "Message signing enabled but not required")]),
+         (3389, "ms-wbt-server", "Microsoft Terminal Services", "", [])],
+    WEB: [(21, "ftp", "vsftpd", "3.0.3", [("ftp-anon", "Anonymous FTP login allowed (FTP code 230)")]),
+          (22, "ssh", "OpenSSH", "8.9p1", []),
+          (80, "http", "Apache httpd", "2.4.52", [("http-title", "<script>alert(1)</script> Lab Portal")])],
+}
+mode_xml = ""
+print("Starting Nmap 7.94SVN ( https://nmap.org )")
+if "-sn" in a:
+    mode_xml = (host(DC, "00:0C:29:AA:BB:CC", "VMware, Inc.", ["dc01.lab.local"])
+                + host(WEB, "08:00:27:11:22:33", "Oracle VirtualBox virtual NIC")
+                + host("10.9.9.9"))            # out-of-scope host: must be dropped by the scope guard
+elif "-O" in a:
+    mode_xml = (host(DC, os=("Microsoft Windows Server 2019", 96, "general purpose", "Windows"))
+                + host(WEB, os=("Linux 5.4 - 5.15", 94, "general purpose", "Linux")))
+elif "-sV" in a:
+    ip = a[-1]
+    mode_xml = host(ip, ports=OPEN.get(ip, []))
+    time.sleep(float(os.environ.get("FAKE_SLEEP", "0.2")))
+else:                                           # port-scan fallback
+    mode_xml = "".join(host(ip, ports=[(p[0], p[1], "", "", []) for p in ports]) for ip, ports in OPEN.items())
+print("Stats: 0:00:03 elapsed; 2 hosts completed (2 up)")
+out = val("-oX")
+if out:
+    with open(out, "w") as fh:
+        fh.write('<?xml version="1.0"?><nmaprun scanner="nmap">' + mode_xml + "</nmaprun>")
+print("Nmap done")

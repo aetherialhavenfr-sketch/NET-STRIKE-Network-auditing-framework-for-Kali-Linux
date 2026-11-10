@@ -1,0 +1,8 @@
+# NET-STRIKE has NO third-party Python dependencies: it runs on the standard library only (Python 3.9+).
+# This keeps the framework lightweight and easy to audit. Nothing needs to be pip-installed.
+#
+# External tools it drives (all packaged in Kali Linux):
+#   sudo apt update && sudo apt install -y nmap masscan tshark netdiscover enum4linux-ng
+#
+# Optional, for running the test-suite with pytest instead of unittest:
+# pytest>=7.0

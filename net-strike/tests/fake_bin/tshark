@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+import sys, time
+a = sys.argv[1:]
+if "--version" in a:
+    print("TShark (Wireshark) 4.2.0"); sys.exit(0)
+if "-i" in a:                                   # live capture
+    dur = int(a[a.index("-a") + 1].split(":")[1])
+    sys.stderr.write("Capturing on 'eth0'\n")
+    time.sleep(min(dur, 2))
+    with open(a[a.index("-w") + 1], "wb") as fh:
+        fh.write(b"\x0a\x0d\x0d\x0afake-pcapng")
+    sys.stderr.write("12 packets captured\n"); sys.exit(0)
+fields = [a[i + 1] for i, x in enumerate(a) if x == "-e"]
+P = [
+    {"frame.len": "74", "frame.protocols": "eth:ethertype:ip:udp:dns", "ip.src": "192.168.56.20", "ip.dst": "192.168.56.1",
+     "udp.dstport": "53", "dns.qry.name": "updates.lab.local"},
+    {"frame.len": "420", "frame.protocols": "eth:ethertype:ip:tcp:http", "ip.src": "192.168.56.1", "ip.dst": "192.168.56.20",
+     "tcp.dstport": "80", "http.host": "portal.lab.local"},
+    {"frame.len": "310", "frame.protocols": "eth:ethertype:ip:tcp:tls", "ip.src": "192.168.56.10", "ip.dst": "192.168.56.1",
+     "tcp.dstport": "443", "tls.handshake.extensions_server_name": "login.example.test"},
+    {"frame.len": "90", "frame.protocols": "eth:ethertype:ip:tcp:ftp", "ip.src": "192.168.56.1", "ip.dst": "192.168.56.20",
+     "tcp.dstport": "21"},
+    {"frame.len": "60", "frame.protocols": "eth:ethertype:arp", "arp.src.proto_ipv4": "192.168.56.1", "arp.src.hw_mac": "aa:aa:aa:aa:aa:01"},
+    {"frame.len": "60", "frame.protocols": "eth:ethertype:arp", "arp.src.proto_ipv4": "192.168.56.1", "arp.src.hw_mac": "bb:bb:bb:bb:bb:02"},
+    {"frame.len": "1514", "frame.protocols": "eth:ethertype:ip:tcp", "ip.src": "192.168.56.10", "ip.dst": "192.168.56.20",
+     "tcp.dstport": "445"},
+]
+for p in P:
+    print("\t".join(p.get(f, "") for f in fields))

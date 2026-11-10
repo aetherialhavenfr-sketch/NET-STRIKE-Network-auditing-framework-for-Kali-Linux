@@ -1,0 +1,8 @@
+# NET-STRIKE scope file  ->  copy to ~/.netstrike/scope.txt
+#
+# Private / lab ranges (10/8, 172.16/12, 192.168/16, 127/8, 169.254/16) are always allowed.
+# List ADDITIONAL networks here ONLY if you hold written authorization to test them.
+# One entry per line: single IP, CIDR, or range. Lines starting with # are comments.
+#
+# 203.0.113.0/28          # example: customer DMZ (engagement #1234, signed 2026-01-15)
+# 198.51.100.20-30        # example: staging hosts
